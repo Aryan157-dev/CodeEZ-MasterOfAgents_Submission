@@ -1,12 +1,14 @@
-import sys
 import os
+from dotenv import load_dotenv
+load_dotenv()
+import sys
 from parser import parse_markdown
 from slide_planner import plan_slides
 import pptx_builder
 import chart_generator
 from pptx_builder import build_presentation
 
-API_KEY = "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"
+API_KEY = os.environ.get("GROQ_API_KEY")
 
 def main(md_file, theme="red"):
     if not os.path.exists(md_file):

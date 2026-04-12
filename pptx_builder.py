@@ -862,7 +862,7 @@ if __name__ == "__main__":
     from parser import parse_markdown
     from slide_planner import plan_slides
 
-    API_KEY = "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"
+    API_KEY = os.environ.get("GROQ_API_KEY")
 
     MD_FILE = sys.argv[1] if len(sys.argv) > 1 else "Accenture Tech Acquisition Analysis.md"
     OUTPUT  = sys.argv[2] if len(sys.argv) > 2 else MD_FILE.replace(".md", ".pptx")

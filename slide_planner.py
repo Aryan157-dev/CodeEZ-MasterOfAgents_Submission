@@ -1,3 +1,4 @@
+import os
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 import json
@@ -302,7 +303,7 @@ def get_fallback_plan(parsed_doc):
 if __name__ == "__main__":
     from parser import parse_markdown
 
-    API_KEY = "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"
+    API_KEY = os.environ.get("GROQ_API_KEY")
 
     doc = parse_markdown("Accenture Tech Acquisition Analysis.md")
     slides = plan_slides(doc, API_KEY)
