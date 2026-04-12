@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.png
+.env
+file.env
+test_split.pptx
