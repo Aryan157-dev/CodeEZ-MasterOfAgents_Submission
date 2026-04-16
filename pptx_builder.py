@@ -171,9 +171,6 @@ def build_title_slide(slide, title, subtitle, img=None):
               width=Inches(5.8), height=Inches(2.2),
               font_name="Calibri", font_size=40, bold=True, color=RED)
 
-    # Red divider line
-    _add_rect(slide, Inches(0.4), Inches(4.15), Inches(4.0), Inches(0.06), RED)
-
     # Subtitle
     if subtitle:
         _add_text(slide, subtitle,
@@ -289,8 +286,6 @@ def build_split_panel_slide(slide, title, key_points, context_text="", img=None)
               left=Inches(0.3), top=Inches(1.0),
               width=Inches(3.7), height=Inches(2.8),
               font_size=26, bold=True, color=WHITE)
-
-    _add_rect(slide, Inches(0.3), Inches(4.0), Inches(2.0), Inches(0.06), RED)
 
     context = context_text or ""
     if context:
@@ -682,8 +677,6 @@ def build_chart_slide(slide, title, chart_path):
               width=Inches(2.6), height=Inches(2.5),
               font_size=20, bold=True, color=WHITE)
 
-    _add_rect(slide, Inches(0.25), Inches(3.65), Inches(1.6), Inches(0.06), RED)
-
     _add_text(slide, "Data visualization\nfrom document analysis",
               left=Inches(0.25), top=Inches(3.85),
               width=Inches(2.6), height=Inches(1.0),
@@ -727,7 +720,6 @@ def build_kpi_visual_slide(slide, title, parsed_doc):
               width=Inches(12.5), height=Inches(0.8),
               font_size=24, bold=True, color=WHITE)
 
-    _add_rect(slide, Inches(0.3), Inches(1.12), Inches(3.5), Inches(0.06), RED)
 
     stats = parsed_doc.get("key_stats", [])
     rings_data = []
@@ -795,8 +787,6 @@ def build_conclusion_slide(slide, title, key_points):
               left=Inches(0.4), top=Inches(0.3),
               width=Inches(6.0), height=Inches(0.9),
               font_size=28, bold=True, color=WHITE)
-
-    _add_rect(slide, Inches(0.4), Inches(1.25), Inches(3.2), Inches(0.06), RED)
 
     for i, point in enumerate(key_points[:5]):
         y = Inches(1.5) + i * Inches(1.0)
@@ -915,7 +905,6 @@ def build_big_statement_slide(slide, title, key_points):
               align=PP_ALIGN.CENTER)
 
     # Red accent line under statement
-    _add_rect(slide, Inches(4.0), Inches(4.3), Inches(5.3), Inches(0.08), RED)
 
     # Supporting insight
     if key_points:
