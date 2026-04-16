@@ -8,7 +8,7 @@ import re
 VALID_LAYOUT_TYPES = {
     "title", "executive_summary", "split_panel", "timeline",
     "kpi_stats", "kpi_visual", "two_col_compare", "grid_4col", "data_table",
-    "chart", "conclusion"
+    "chart", "conclusion", "big_statement", "icon_row"
 }
 
 # Fallback mapping: if LLM gives old slide_type, map to layout_type
@@ -34,12 +34,10 @@ def sanitize_slide(slide, index):
     # Resolve layout_type
     layout = slide.get("layout_type", "").strip().lower()
     if layout not in VALID_LAYOUT_TYPES:
-        # Try to map from legacy slide_type
         old_type = slide.get("slide_type", "").strip().lower()
         layout = LEGACY_TYPE_MAP.get(old_type, "split_panel")
     slide["layout_type"] = layout
 
-    # Ensure key_points is a list of strings
     if not isinstance(slide["key_points"], list):
         slide["key_points"] = []
     slide["key_points"] = [str(p) for p in slide["key_points"] if p]
@@ -55,7 +53,6 @@ def plan_slides(parsed_doc, api_key):
         api_key=api_key
     )
 
-    # Build document context for the LLM
     sections_list = "\n".join([
         f"- {s['title']}" for s in parsed_doc["sections"]
         if not s.get("is_references")
@@ -68,17 +65,14 @@ def plan_slides(parsed_doc, api_key):
 
     exec_summary = parsed_doc.get("executive_summary", "")[:800]
 
-    # Extract key stats for KPI slide hint
     stats = parsed_doc.get("key_stats", [])
     stats_hint = ", ".join([s["value"] for s in stats[:6]]) if stats else "None found"
 
-    # Check for timeline signals in section titles
     timeline_hint = any(
         any(kw in s["title"].lower() for kw in ["timeline", "history", "evolution", "milestones", "journey", "year", "phase"])
         for s in parsed_doc["sections"]
     )
 
-    # Check for comparison signals
     compare_hint = any(
         any(kw in s["title"].lower() for kw in ["vs", "comparison", "benchmark", "peer", "success", "challenge", "pros", "cons", "versus"])
         for s in parsed_doc["sections"]
@@ -109,6 +103,9 @@ COMPARISON CONTENT DETECTED: {compare_hint}
 
 "executive_summary"  
   → Use for: Slide 2 only. 5 key insight cards with Header: Description format.
+  → key_points: each point MUST be "Header: 20-30 word description with specific data, numbers, or facts from the document"
+  → BAD: "Market size: Large market"
+  → GOOD: "Market size: India's used commercial taxi market reached INR 4 trillion in FY2025, with 8-10% projected growth into FY2026"
 
 "kpi_stats"
   → Use for: Slides with KEY NUMBERS or metrics (e.g. $6.6B, 326 acquisitions, 47%).
@@ -129,17 +126,25 @@ COMPARISON CONTENT DETECTED: {compare_hint}
 "two_col_compare"
   → Use for: Successes vs Challenges, Pros vs Cons, Before vs After, Region A vs Region B.
   → key_points: first half are LEFT column points, second half are RIGHT column points (split evenly).
+  → Provide 3-4 points per column (6-8 total key_points minimum).
+  → Each point must be 15-25 words with specific facts, data, or named examples from the document.
   → metadata: {{"left_label": "Successes", "right_label": "Challenges"}}
+  → BAD: "Global Competition: Overview of competition"
+  → GOOD: "Global Competition: India-based freelancers compete with Eastern Europe on Upwork, often undercutting by 40-60% on hourly rates"
   → Use when: compare_hint is True, or section has opposing concepts.
 
 "grid_4col"
   → Use for: 4 distinct categories, pillars, domains, or strategies displayed as a grid.
-  → key_points: exactly 4 items, each is "COLUMN_HEADER: description"
+  → key_points: exactly 4 items, each is "COLUMN_HEADER: 15-20 word description with specific detail"
   → Use when: section has 4 clear themes (e.g. Geographic distribution with 4 regions).
 
 "split_panel"
-  → Use for: General content sections with 3-5 bullet points. Left panel = bold context, right = points.
-  → - key_points: list of EXACTLY 5 bullet points, each 10-15 words, format as "Bold Label: detailed description with specific facts"
+  → Use for: General content sections with 5 bullet points. Left panel = bold context, right = points.
+  → key_points: list of EXACTLY 5 bullet points. Each point MUST be 20-30 words minimum.
+  → Format: "Bold Label: specific detail with data, numbers, percentages, names, or dates from the document"
+  → NEVER write generic statements. Every point needs a concrete fact from the document.
+  → BAD: "Growth Opportunities: Potential for growth and development"
+  → GOOD: "Growth Opportunities: India AI freelance market projected at $17B by 2027, driven by 52% surge in AI-related tasks on Upwork and Fiverr platforms"
   → This is the DEFAULT layout for most content slides.
 
 "data_table"
@@ -150,13 +155,27 @@ COMPARISON CONTENT DETECTED: {compare_hint}
   → Use for: Data visualization from a table (bar/line chart).
   → use_table: MUST be copied EXACTLY verbatim from the TABLES AVAILABLE list above. Do not paraphrase or describe it. Copy the exact table title string character by character.
 
+"big_statement"
+  → Use for: A single powerful insight or statistic that deserves its own slide.
+  → key_points[0]: One supporting sentence (20-25 words)
+  → key_points[1-3]: 3 short fact pills (8-12 words each), shown at the bottom
+  → Use when: There is a single defining fact/stat that anchors the whole presentation.
+  → Example title: "India's AI Freelance Market Will Reach $17 Billion by 2027"
+
+"icon_row"
+  → Use for: 3-5 distinct steps, pillars, strategies, or factors shown as numbered cards.
+  → key_points: 3-5 items, each "HEADER: 15-20 word description"
+  → Use when: section has a process, framework, or set of key drivers/factors.
+  → Better than grid_4col when items are steps or have a sequence.
+
 "conclusion"
   → Use for: The final slide. Key takeaways with → arrows.
+  → key_points: 4-5 points, each 15-20 words summarizing the most important insights with specific facts.
 
 === SLIDE STRUCTURE RULES ===
 - Slide 1: title
 - Slide 2: executive_summary  
-- Slides 3-N: Mix of split_panel, kpi_stats, timeline, two_col_compare, grid_4col, data_table, chart
+- Slides 3-N: Mix of split_panel, kpi_stats, timeline, two_col_compare, grid_4col, data_table, chart, icon_row, big_statement
 - Last slide: conclusion
 - If tables exist: include at least one data_table AND one chart slide
 - If key stats exist: include one kpi_stats slide
@@ -190,7 +209,6 @@ For grid_4col, key_points must follow "HEADER: description" format (exactly 4 it
     try:
         text = response.content.strip()
 
-        # Robust JSON extraction
         match = re.search(r'\[.*\]', text, re.DOTALL)
         if match:
             text = match.group(0)
@@ -200,11 +218,8 @@ For grid_4col, key_points must follow "HEADER: description" format (exactly 4 it
             text = text.strip()
 
         slides = json.loads(text)
-
-        # Sanitize every slide
         slides = [sanitize_slide(slide, i) for i, slide in enumerate(slides)]
 
-        # Enforce slide 1 = title, slide 2 = executive_summary, last = conclusion
         if slides and slides[0]["layout_type"] != "title":
             slides[0]["layout_type"] = "title"
         if len(slides) > 1 and slides[1]["layout_type"] != "executive_summary":
@@ -229,7 +244,6 @@ def get_fallback_plan(parsed_doc):
     print("⚠️  Using fallback slide plan")
     slides = []
 
-    # Slide 1: Title
     slides.append({
         "slide_number": 1, "layout_type": "title",
         "title": parsed_doc["title"],
@@ -237,7 +251,6 @@ def get_fallback_plan(parsed_doc):
         "use_table": None, "metadata": {}, "speaker_notes": "Title slide"
     })
 
-    # Slide 2: Executive Summary
     exec_points = []
     if parsed_doc.get("executive_summary"):
         sentences = [s.strip() for s in parsed_doc["executive_summary"].split('.') if len(s.strip()) > 20]
@@ -252,7 +265,6 @@ def get_fallback_plan(parsed_doc):
         "use_table": None, "metadata": {}, "speaker_notes": "Executive summary"
     })
 
-    # Content slides from sections
     main_sections = [
         s for s in parsed_doc["sections"]
         if not s.get("is_executive_summary") and not s.get("is_references")
@@ -273,7 +285,6 @@ def get_fallback_plan(parsed_doc):
             "speaker_notes": f"Section: {section['title']}"
         })
 
-    # Add table + chart if available
     if parsed_doc.get("tables"):
         t = parsed_doc["tables"][0]
         slides.append({
@@ -289,7 +300,6 @@ def get_fallback_plan(parsed_doc):
             "metadata": {}, "speaker_notes": "Chart slide"
         })
 
-    # Conclusion
     slides.append({
         "slide_number": len(slides) + 1, "layout_type": "conclusion",
         "title": "Key Takeaways",
